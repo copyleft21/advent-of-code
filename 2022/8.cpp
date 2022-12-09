@@ -105,7 +105,7 @@ static const char* input[N] =
 "111021010130123300013234210112002104312354542225421421441334253132031032244142134422332001101011222"
 };
 
-int main()
+size_t part1()
 {
     bool visible[N][N] {false};
     size_t n_visible = 0;
@@ -187,7 +187,68 @@ int main()
     }
 
     n_visible += (N-1) * 4;
-    std::cout << "Part 1: " << n_visible;
+    return n_visible;
+}
 
-   return 0;
+size_t part2()
+{
+    size_t ret = 0;
+    for (char C = '9'; C > '0'; --C)
+    {
+        size_t scores[N][N][4] {0};
+        for (size_t i = 1; i < N-1; ++i)
+        {
+            size_t dist[4] {1,1,1,1};
+            for (size_t j = 1; j < N-1; ++j)
+            {
+                // From the left
+                if (input[i][j] < C) dist[0]++;
+                else
+                {
+                    scores[i][j][0] = dist[0];
+                    dist[0] = 1;
+                }
+                // From the right
+                if (input[i][N-1-j] < C) dist[1]++;
+                else
+                {
+                    scores[i][N-1-j][1] = dist[1];
+                    dist[1] = 1;
+                }
+                // From the top
+                if (input[j][i] < C) dist[2]++;
+                else
+                {
+                    scores[j][i][2] = dist[2];
+                    dist[2] = 1;
+                }
+                // From the bottom
+                if (input[N-1-j][i] < C) dist[3]++;
+                else
+                {
+                    scores[N-1-j][i][3] = dist[3];
+                    dist[3] = 1;
+                }
+            }
+        }
+
+        for (size_t i = 1; i < N-1; ++i)
+        {
+            for (size_t j = 1; j < N-1; ++j)
+            {
+                size_t score = scores[i][j][0] * scores[i][j][1] * scores[i][j][2] * scores[i][j][3];
+                if (score > ret) ret = score;
+            }
+        }
+    }
+
+    return ret;
+}
+
+int main()
+{
+    std::cout << "Part 1: " << part1() << std::endl;
+    std::cout << "Part 2: " << part2() << std::endl;
+
+    return 0;
 }
