@@ -1,5 +1,6 @@
 #include <array>
 #include <iostream>
+#include <map>
 #include <string>
 
 const std::array<std::string, 202> field =
@@ -2224,16 +2225,50 @@ const Cmd input[] =
 {2,NONE}
 };
 
-size_t part1()
+struct Dir { int dx, dy; char c; };
+Dir dir[4]
 {
-    struct Dir { int dx, dy; char c; };
-    Dir dir[4]
-    {
-        { 1,  0, '>'},
-        { 0,  1, 'v'},
-        {-1,  0, '<'},
-        { 0, -1, '^'}
-    };
+    { 1,  0, '>'},
+    { 0,  1, 'v'},
+    {-1,  0, '<'},
+    { 0, -1, '^'}
+};
+
+struct CoordOp
+{
+    int xmult;
+    int ymult;
+    int delta;
+};
+
+struct Warp
+{
+    size_t heading;
+    CoordOp xOp;
+    CoordOp yOp;
+};
+
+std::tuple<size_t, size_t, size_t> do_warp(size_t x, size_t y, size_t head, const std::map<std::pair<size_t, size_t>, Warp>& op)
+{
+    size_t nx;
+    size_t ny;
+    size_t h;
+
+
+    size_t sx = (x-1) / 50;
+    size_t sy = (y-1) / 50;
+    size_t sector = sy * 3 + sx;
+
+    const Warp& warp = op.at({sector,head});
+    h = warp.heading;
+    nx = warp.xOp.xmult * x + warp.xOp.ymult * y + warp.xOp.delta;
+    ny = warp.yOp.xmult * x + warp.yOp.ymult * y + warp.yOp.delta;
+
+    return {nx, ny, h};
+}
+
+size_t process(const std::map<std::pair<size_t, size_t>, Warp>& op)
+{
     size_t x, y;
     size_t heading;
 
@@ -2244,6 +2279,7 @@ size_t part1()
     for (const Cmd& cmd : input)
     {
         Dir d = dir[heading];
+        size_t next_h = heading;
         char next = ' ';
         for (size_t i = 0; i < cmd.move; ++i)
         {
@@ -2253,24 +2289,10 @@ size_t part1()
             if (next == ' ')
             {
                 // Turn around
-                switch (heading)
-                {
-                case 0:
-                    next_x = field[y].find_first_not_of(' ');
-                    break;
-                case 1:
-                    next_y = 0;
-                    while (field[next_y][x] == ' ') next_y++;
-                    break;
-                case 2:
-                    next_x = field[y].find_last_not_of(' ');
-                    break;
-                case 3:
-                    next_y = field.size() - 1;
-                    while (field[next_y][x] == ' ') next_y--;
-                    break;
-                }
-
+                auto [nx, ny, nh] = do_warp(x, y, next_h, op);
+                next_x = nx;
+                next_y = ny;
+                next_h = nh;
                 next = field[next_y][next_x];
             }
 
@@ -2281,6 +2303,8 @@ size_t part1()
 
             x = next_x;
             y = next_y;
+            heading = next_h;
+            d = dir[heading];
         }
 
         if (cmd.turn == CW)
@@ -2296,9 +2320,86 @@ size_t part1()
     return 1000 * y + 4 * x + heading;
 }
 
+size_t part1()
+{
+    /*
+     * WARPs
+     * from head to head  next_x next_y
+     * 1    2    2  2     150    y
+     * 1    3    7  3     x      150
+     * 2    0    1  0     51     y
+     * 2    1    2  1     x      1
+     * 2    3    2  3     x      50
+     * 4    0    4  0     51     y
+     * 4    2    4  2     100    y
+     * 6    2    7  2     100    y
+     * 6    3    9  3     x      200
+     * 7    0    6  0     1      y
+     * 7    1    1  1     x      1
+     * 9    0    9  0     1      y
+     * 9    1    6  1     x      101
+     * 9    2    9  2     50     y
+     */
+    const std::map<std::pair<size_t, size_t>, Warp> op =
+    {
+        {{1,2}, {2,{0,0,150},  {0,1,0}}},
+        {{1,3}, {3,{1,0,0},    {0,0,150}}},
+        {{2,0}, {0,{0,0,51},   {0,1,0}}},
+        {{2,1}, {1,{1,0,0},    {0,0,1}}},
+        {{2,3}, {3,{1,0,0},    {0,0,50}}},
+        {{4,0}, {0,{0,0,51},   {0,1,0}}},
+        {{4,2}, {2,{0,0,100},  {0,1,0}}},
+        {{6,2}, {2,{0,0,100},  {0,1,0}}},
+        {{6,3}, {3,{1,0,0},    {0,0,200}}},
+        {{7,0}, {0,{0,0,1},    {0,1,0}}},
+        {{7,1}, {1,{1,0,0},    {0,0,1}}},
+        {{9,0}, {0,{0,0,1},    {0,1,0}}},
+        {{9,1}, {1,{1,0,0},    {0,0,101}}},
+        {{9,2}, {2,{0,0,50},   {0,1,0}}}
+    };
+    
+    return process(op);
+}
+
 size_t part2()
 {
-    return 0;
+    /*
+     * WARPs
+     * from head to head  next_x next_y
+     * 1    2    6  0     1      151-y
+     * 1    3    9  0     1      100+x
+     * 2    0    7  2     100    151-y
+     * 2    1    4  2     100    -50+x
+     * 2    3    9  3     -100+x 200
+     * 4    0    2  3     50+y   50
+     * 4    2    6  1     -50+y  101
+     * 6    2    1  0     51     151-y
+     * 6    3    4  0     51     50+x
+     * 7    0    2  2     150    151-y
+     * 7    1    9  2     50     100+x
+     * 9    0    7  3     -100+y 150
+     * 9    1    2  1     100+x  1
+     * 9    2    1  1     -100+y 1
+     */
+    const std::map<std::pair<size_t, size_t>, Warp> op =
+    {
+        {{1,2}, {0,{0,0,1},    {0,-1,151}}},
+        {{1,3}, {0,{0,0,1},    {1,0,100}}},
+        {{2,0}, {2,{0,0,100},  {0,-1,151}}},
+        {{2,1}, {2,{0,0,100},  {1,0,-50}}},
+        {{2,3}, {3,{1,0,-100}, {0,0,200}}},
+        {{4,0}, {3,{0,1,50},   {0,0,50}}},
+        {{4,2}, {1,{0,1,-50},  {0,0,101}}},
+        {{6,2}, {0,{0,0,51},   {0,-1,151}}},
+        {{6,3}, {0,{0,0,51},   {1,0,50}}},
+        {{7,0}, {2,{0,0,150},  {0,-1,151}}},
+        {{7,1}, {2,{0,0,50},   {1,0,100}}},
+        {{9,0}, {3,{0,1,-100}, {0,0,150}}},
+        {{9,1}, {1,{1,0,100},  {0,0,1}}},
+        {{9,2}, {1,{0,1,-100}, {0,0,1}}}
+    };
+    
+    return process(op);
 }
 
 int main()
