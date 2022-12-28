@@ -1,8 +1,9 @@
 #include <iostream>
-#include <map>
+#include <unordered_map>
 #include <string>
+#include <vector>
 
-const std::map<std::string, std::string> input =
+const std::unordered_map<std::string, std::string> input =
 {
 {"cjdb", "3"},
 {"hhfs", "5"},
@@ -2733,44 +2734,105 @@ const std::map<std::string, std::string> input =
 {"rrvf", "4"}
 };
 
-int64_t solve(const std::string& monkey)
+std::unordered_map<std::string, int64_t> part1_results;
+
+int64_t solve(const std::string& monkey,
+              std::vector<std::string>* bt = nullptr,
+              std::vector<std::string>* result_bt = nullptr)
 {
     int64_t rv = 0;
 
-    const std::string& v = input.at(monkey);
-    if (v.size() == 4+4+3)
+    if ((nullptr != bt) && (monkey == "humn"))
     {
-        int64_t lhs = solve(v.substr(0,4));
-        int64_t rhs = solve(v.substr(7,4));
-        switch(v[5])
+        if (nullptr != result_bt) *result_bt = *bt;
+    }
+
+    auto it = part1_results.find(monkey);
+    if (it == part1_results.end())
+    {
+        const std::string& v = input.at(monkey);
+        if (v.size() == 4+4+3)
         {
-            case '+': rv = lhs + rhs; break;
-            case '-': rv = lhs - rhs; break;
-            case '*': rv = lhs * rhs; break;
-            case '/': rv = lhs / rhs; break;
+            if (nullptr != bt) bt->push_back(monkey + std::string(": ") + v);
+            int64_t lhs = solve(v.substr(0,4), bt, result_bt);
+            int64_t rhs = solve(v.substr(7,4), bt, result_bt);
+            if (nullptr != bt) bt->pop_back();
+            switch(v[5])
+            {
+                case '+': rv = lhs + rhs; break;
+                case '-': rv = lhs - rhs; break;
+                case '*': rv = lhs * rhs; break;
+                case '/': rv = lhs / rhs; break;
+            }
         }
+        else
+        {
+            rv = std::atoll(v.c_str());
+        }
+        part1_results[monkey] = rv;
     }
     else
     {
-        rv = std::atoll(v.c_str());
+        rv = it->second;
     }
 
     return rv;
 }
 
-int64_t part1()
-{
-    return solve("root");
-}
-
 int64_t part2()
 {
-    return 0;
+    std::vector<std::string> bt;
+    std::vector<std::string> result_bt;
+
+    int64_t root = solve("root", &bt, &result_bt);
+    result_bt.push_back("humn");
+
+    root = 0;
+    result_bt[0] = "root: pgtp - vrvh";
+
+    size_t n = result_bt.size()-1;
+    for(size_t i = 0; i < n; ++i)
+    {
+        const std::string& line = result_bt[i];
+        if (result_bt[i+1].substr(0,4) == line.substr(6, 4))
+        {
+            int64_t rhs = part1_results[line.substr(13,4)];
+            switch(line[11])
+            {
+                // root = lhs + rhs => lhs = root - rhs
+                case '+': root = root - rhs; break;
+                // root = lhs - rhs => lhs = root + rhs
+                case '-': root = root + rhs; break;
+                // root = lhs * rhs => lhs = root / rhs
+                case '*': root = root / rhs; break;
+                // root = lhs / rhs => lhs = root * rhs
+                case '/': root = root * rhs; break;
+            }
+        }
+        else
+        {
+            int64_t lhs = part1_results[line.substr(6,4)];
+            switch(line[11])
+            {
+                // root = lhs + rhs => rhs = root - lhs
+                case '+': root = root - lhs; break;
+                // root = lhs - rhs => rhs = lhs - root
+                case '-': root = lhs - root; break;
+                // root = lhs * rhs => rhs = root / lhs
+                case '*': root = root / lhs; break;
+                // root = lhs / rhs => rhs = lhs / root
+                case '/': root = lhs / root; break;
+            }
+        }
+    }
+
+    return root;
 }
 
 int main()
 {
-    std::cout << "Part 1: " << part1() << std::endl;
-    std::cout << "Part 2: " << part2() << std::endl;
+    auto p2 = part2();
+    std::cout << "Part 1: " << part1_results["root"] << std::endl;
+    std::cout << "Part 2: " << p2 << std::endl;
     return 0;
 }
