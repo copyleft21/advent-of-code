@@ -2,7 +2,8 @@
 #include <list>
 #include <vector>
 
-// #define TEST
+//#define TEST
+//#define DEBUG
 
 const std::list<int64_t> input =
 {
@@ -5018,21 +5019,20 @@ const std::list<int64_t> input =
 #endif  // TEST
 };
 
-int64_t part1()
+std::list<int64_t>::iterator mix(
+    std::list<int64_t>& values,
+    std::vector<std::list<int64_t>::iterator>& iterators)
 {
-    std::list<int64_t> values(input);
-    std::vector<std::list<int64_t>::iterator> iterators;
-    for (auto it = values.begin(); it != values.end(); ++it)
-        iterators.push_back(it);
     std::list<int64_t>::iterator zero_it;
-    const int64_t N = values.size();
+    const int64_t N = iterators.size();
 
 #ifdef DEBUG
+    std::cout << std::endl << "-------------------------" << std::endl;
     for (auto val : values) std::cout << val << ", ";
     std::cout << std::endl;
 #endif // DEBUG
 
-    for (auto it : iterators)
+    for (auto& it : iterators)
     {
         int64_t v = *it;
         if (0 == v)
@@ -5042,24 +5042,24 @@ int64_t part1()
         else if(v > 0)
         {
             int64_t moves = v % (N-1);
-            auto pos = values.erase(it);
             for (int64_t i = 0; i < moves; ++i)
             {
-                ++pos;
+                auto pos = values.erase(it);
                 if (pos == values.end()) pos = values.begin();
+                ++pos;
+                it = values.insert(pos, v);
             }
-            values.insert(pos, v);
         }
         else
         {
-            int64_t moves = v % (N-1);
-            auto pos = values.erase(it);
-            for (int64_t i = moves; i < 0; ++i)
+            int64_t moves = (-v) % (N-1);
+            for (int64_t i = 0; i < moves; ++i)
             {
-                --pos;
+                auto pos = values.erase(it);
                 if (pos == values.begin()) pos = values.end();
+                --pos;
+                it = values.insert(pos, v);
             }
-            values.insert(pos, v);
         }
 
 #ifdef DEBUG
@@ -5067,6 +5067,17 @@ int64_t part1()
         std::cout << std::endl;
 #endif // DEBUG
     }
+
+    return zero_it;
+}
+
+int64_t part1()
+{
+    std::list<int64_t> values(input);
+    std::vector<std::list<int64_t>::iterator> iterators;
+    for (auto it = values.begin(); it != values.end(); ++it)
+        iterators.push_back(it);
+    std::list<int64_t>::iterator zero_it = mix(values, iterators);
 
     int64_t rv = 0;
     for (size_t n = 0; n < 3; ++n)
@@ -5084,7 +5095,28 @@ int64_t part1()
 
 int64_t part2()
 {
-    return 0;
+    constexpr int64_t decryption_key = 811589153;
+    std::list<int64_t> values;
+    for (auto v : input) values.push_back(v * decryption_key);
+    std::vector<std::list<int64_t>::iterator> iterators;
+    for (auto it = values.begin(); it != values.end(); ++it)
+        iterators.push_back(it);
+    std::list<int64_t>::iterator zero_it;
+    
+    for (size_t i = 0; i < 10; ++i) zero_it = mix(values, iterators);
+
+    int64_t rv = 0;
+    for (size_t n = 0; n < 3; ++n)
+    {
+        for (int64_t i = 0; i < 1000; ++i)
+        {
+            ++zero_it;
+            if (zero_it == values.end()) zero_it = values.begin();
+        }
+        rv += *zero_it;
+    }
+
+    return rv;
 }
 
 int main()
