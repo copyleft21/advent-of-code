@@ -196,9 +196,8 @@ void explore(const Field& field, std::set<Pos>& positions)
     }
 }
 
-size_t traverse(Field& field, const Pos& initial, const Pos& target)
+size_t traverse(Field& field, const Pos& initial, const Pos& target, size_t minutes = 0)
 {
-    size_t minutes = 0;
     std::set<Pos> positions;
     positions.insert(initial);
     while (!positions.contains(target))
@@ -220,7 +219,12 @@ size_t part1()
 
 size_t part2()
 {
-    return 0;
+    Field field;
+    init_field(field);
+    size_t minutes = traverse(field, { 1, 0 }, { SIZE_X - 2, SIZE_Y - 1 });
+    minutes = traverse(field, { SIZE_X - 2, SIZE_Y - 1 }, { 1, 0 }, minutes);
+    minutes = traverse(field, { 1, 0 }, { SIZE_X - 2, SIZE_Y - 1 }, minutes);
+    return minutes;
 }
 
 int main()
