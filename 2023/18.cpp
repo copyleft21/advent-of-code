@@ -770,12 +770,13 @@ struct Pos_t
     bool operator <=> (const Pos_t&) const = default;
 };
 
-template<typename _F>
-void traverse(_F f)
+template<typename _F, typename _InputTransform>
+void traverse(_F f, _InputTransform i)
 {
     Pos_t from = {0, 0};
-    for (const Step& step : input)
+    for (const Step& input_step : input)
     {
+		Step step = i(input_step);
         Pos_t to = from;
         to.x += step.n * step.dir.x;
         to.y += step.n * step.dir.y;
@@ -784,59 +785,85 @@ void traverse(_F f)
     }
 }
 
+// Trying to implement https://en.wikipedia.org/wiki/Shoelace_formula
+struct State
+{
+	bool has_vertex = false;
+	Pos_t first_vertex;
+	Pos_t last_vertex;
+	ssize_t accum = 0;
+	ssize_t perimeter = 0;
+
+	void update(const Pos_t& from, const Pos_t& to, int n)
+	{
+		perimeter += n;
+		{
+			if (!has_vertex)
+			{
+				has_vertex = true;
+				first_vertex = last_vertex = from;
+			}
+
+			{
+				accum += (last_vertex.y + to.y) * (last_vertex.x - to.x);
+				last_vertex = to;
+			}
+		}
+	}
+
+	size_t result()
+	{
+		if (last_vertex != first_vertex)
+		{
+			accum += (last_vertex.y + first_vertex.y) * (last_vertex.x - first_vertex.x);
+			last_vertex = first_vertex;
+		}
+		size_t total = std::abs(accum);
+		return 1 + (perimeter + total) / 2;
+	}
+};
+
 size_t part1()
 {
-    // Trying to implement https://en.wikipedia.org/wiki/Shoelace_formula
-    struct State
-    {
-        bool has_vertex = false;
-        Pos_t first_vertex;
-        Pos_t last_vertex;
-        ssize_t accum = 0;
-        ssize_t perimeter = 0;
-
-        void update(const Pos_t& from, const Pos_t& to, int n)
-        {
-            // std::cout << to.x << "," << to.y << std::endl;
-            perimeter += n;
-            {
-                if (!has_vertex)
-                {
-                    has_vertex = true;
-                    first_vertex = last_vertex = from;
-                }
-
-                {
-                    accum += (last_vertex.y + to.y) * (last_vertex.x - to.x);
-                    last_vertex = to;
-                }
-            }
-        }
-
-        size_t result()
-        {
-            if (last_vertex != first_vertex)
-            {
-                accum += (last_vertex.y + first_vertex.y) * (last_vertex.x - first_vertex.x);
-                last_vertex = first_vertex;
-            }
-            size_t total = std::abs(accum);
-            return 1 + (perimeter + total) / 2;
-        }
-    };
-
     State state;
-    traverse([&](const Pos_t& from, const Pos_t& to, int n)
-    {
-        state.update(from, to, n);
-    });
+    traverse(
+        [&](const Pos_t& from, const Pos_t& to, int n)
+        {
+            state.update(from, to, n);
+        },
+        [](const Step& s)
+        {
+            return s;
+        }
+    );
 
     return state.result();
 }
 
 size_t part2()
 {
-    return 0;
+    State state;
+    traverse(
+        [&](const Pos_t& from, const Pos_t& to, int n)
+        {
+            state.update(from, to, n);
+        },
+        [](const Step& s)
+        {
+            Step rv;
+            switch(s.color & 0x0F)
+            {
+                case 0: rv.dir = R; break;
+                case 1: rv.dir = D; break;
+                case 2: rv.dir = L; break;
+                case 3: rv.dir = U; break;
+            }
+            rv.n = s.color >> 4;
+            return rv;
+        }
+    );
+
+    return state.result();
 }
 
 int main()
