@@ -1,12 +1,12 @@
 #include <iostream>
 #include <string>
-
+gh pr checkout 1
 struct Cmd
 {
   int x;
-  int y;
+ [ int y;
 };
-
+gh checkout i.yml
 constexpr Cmd L = {-1, 0};
 constexpr Cmd R = {+1, 0};
 constexpr Cmd U = {0, +1};
